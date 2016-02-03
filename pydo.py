@@ -2,21 +2,20 @@
 #
 # Basic todo list app.
 #
-# Author: ***REMOVED*** (***REMOVED***)
+
+__author__ = 'austen0'
+
+__version__ = 0.1
 
 
 import npyscreen
 
-class PydoApp(npyscreen.NPSAppManaged):
-  def onStart(self):
-    self.registerForm('MAIN', MainForm())
 
-class MainForm(npyscreen.Form):
-  def create(self):
-    self.add(npyscreen.TitleText, name = 'Text:', value = 'Hello, world.')
+class PydoApp(npyscreen.NPSApp):
+  def main(self):
+    F = npyscreen.Form(name = 'Pydo v0.1')
+    F.edit()
 
-  def afterEditing(self):
-    self.parentApp.setNextForm(None)
 
 if __name__ == '__main__':
   pydo = PydoApp()
