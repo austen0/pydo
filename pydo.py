@@ -16,7 +16,70 @@ from os.path import expanduser
 
 APP_DIR = expanduser('~') + '/.pydo'
 TODO = APP_DIR + '/todo.db'
-#TODO_COMPLETE = 'complete.db'
+COMPLETE = APP_DIR + '/complete.db'
+
+
+class DatabaseManager(object):
+  def __init__(self, db_file):
+    self.dbfilename = db_file
+    db = sqlite3.connect(self.dbfilename)
+    c = db.cursor()
+    c.execute(
+      'CREATE TABLE IF NOT EXISTS records( \
+        record_internal_id INTEGER PRIMARY KEY, \
+        description TEXT, \
+        priority_id INTEGER \
+      )'
+    )
+    db.commit()
+    c.close()
+
+  def add_record(self, description = '', priority_id = ''):
+    db = sqlite3.connect(self.dbfilename)
+    c = db.cursor()
+    c.execute(
+      'INSERT INTO records(description, priority_id) VALUES(?,?)',
+      (description, str(priority_id[0]))
+    )
+    db.commit()
+    c.close()
+
+  def delete_record(self, record_id):
+    db = sqlite3.connect(self.dbfilename)
+    c = db.cursor()
+    c.execute('DELETE FROM records WHERE record_internal_id = ?', (str(record_id)))
+    db.commit()
+    c.close()
+
+  def get_record(self, record_id):
+    db = sqlite3.connect(self.dbfilename)
+    c = db.cursor()
+    c.execute(
+      'SELECT * FROM records WHERE record_internal_id = ?',
+      (str(record_id))
+    )
+    records = c.fetchall()
+    c.close()
+    return records[0]
+
+  def list_all_records(self):
+    db = sqlite3.connect(self.dbfilename)
+    c = db.cursor()
+    c.execute('SELECT * FROM records ORDER BY priority_id')
+    records = c.fetchall()
+    c.close()
+    return records
+
+  def update_record(self, record_id, description = '', priority_id = ''):
+    db = sqlite3.connect(self.dbfilename)
+    c = db.cursor()
+    c.execute(
+      'UPDATE records SET description = ?, priority_id = ? \
+      WHERE record_internal_id = ?',
+      (description, str(priority_id[0]), str(record_id))
+    )
+    db.commit()
+    c.close()
 
 
 class EditTodo(npyscreen.ActionForm):
@@ -32,7 +95,7 @@ class EditTodo(npyscreen.ActionForm):
 
   def beforeEditing(self):
     if self.value:
-      todo = self.parentApp.todoDb.get_todo(self.value)
+      todo = self.parentApp.todoDb.get_record(self.value)
       self.name = 'Todo id : %s' % todo[0]
       self.todo_id = todo[0]
       self.wgDescription.value = todo[1]
@@ -45,13 +108,13 @@ class EditTodo(npyscreen.ActionForm):
 
   def on_ok(self):
     if self.todo_id:
-      self.parentApp.todoDb.update_todo(
+      self.parentApp.todoDb.update_record(
         self.todo_id,
         description = self.wgDescription.value,
         priority_id = self.wgPriority.value,
       )
     else:
-      self.parentApp.todoDb.add_todo(
+      self.parentApp.todoDb.add_record(
         description = self.wgDescription.value,
         priority_id = self.wgPriority.value,
       )
@@ -59,69 +122,6 @@ class EditTodo(npyscreen.ActionForm):
 
   def on_cancel(self):
     self.parentApp.switchFormPrevious()
-
-
-class TodoDatabase(object):
-  def __init__(self):
-    self.dbfilename = TODO
-    db = sqlite3.connect(self.dbfilename)
-    c = db.cursor()
-    c.execute(
-      'CREATE TABLE IF NOT EXISTS todos( \
-        todo_internal_id INTEGER PRIMARY KEY, \
-        description TEXT, \
-        priority_id INTEGER \
-      )'
-    )
-    db.commit()
-    c.close()
-
-  def add_todo(self, description = '', priority_id = ''):
-    db = sqlite3.connect(self.dbfilename)
-    c = db.cursor()
-    c.execute(
-      'INSERT INTO todos(description, priority_id) VALUES(?,?)',
-      (description, str(priority_id[0]))
-    )
-    db.commit()
-    c.close()
-
-  def delete_todo(self, todo_id):
-    db = sqlite3.connect(self.dbfilename)
-    c = db.cursor()
-    c.execute('DELETE FROM todos WHERE todo_internal_id = ?', (str(todo_id)))
-    db.commit()
-    c.close()
-
-  def get_todo(self, todo_id):
-    db = sqlite3.connect(self.dbfilename)
-    c = db.cursor()
-    c.execute(
-      'SELECT * FROM todos WHERE todo_internal_id = ?',
-      (str(todo_id))
-    )
-    todos = c.fetchall()
-    c.close()
-    return todos[0]
-
-  def list_all_todos(self):
-    db = sqlite3.connect(self.dbfilename)
-    c = db.cursor()
-    c.execute('SELECT * FROM todos ORDER BY priority_id')
-    todos = c.fetchall()
-    c.close()
-    return todos
-
-  def update_todo(self, todo_id, description = '', priority_id = ''):
-    db = sqlite3.connect(self.dbfilename)
-    c = db.cursor()
-    c.execute(
-      'UPDATE todos SET description = ?, priority_id = ? \
-      WHERE todo_internal_id = ?',
-      (description, str(priority_id[0]), str(todo_id))
-    )
-    db.commit()
-    c.close()
 
 
 class TodoList(npyscreen.MultiLineAction):
@@ -145,7 +145,7 @@ class TodoList(npyscreen.MultiLineAction):
     self.parent.parentApp.switchForm('EDITTODOFM')
 
   def delete_todo(self, *args, **keywords):
-    self.parent.parentApp.todoDb.delete_todo(self.values[self.cursor_line][0])
+    self.parent.parentApp.todoDb.delete_record(self.values[self.cursor_line][0])
     self.parent.update_list()
 
   def quit(self, *args, **keywords):
@@ -162,14 +162,15 @@ class TodoListDisplay(npyscreen.FormMutt):
 
   def update_list(self):
     self.wStatus1.value = 'Pydo v0.1'
-    self.wMain.values = self.parentApp.todoDb.list_all_todos()
+    self.wMain.values = self.parentApp.todoDb.list_all_records()
     self.wCommand.value = '(a)dd  (d)elete  (q)uit'
     self.wMain.display()
 
 
 class PydoApp(npyscreen.NPSAppManaged):
   def onStart(self):
-    self.todoDb = TodoDatabase()
+    self.todoDb = DatabaseManager(TODO)
+    self.completeDb = DatabaseManager(COMPLETE)
     self.addForm('MAIN', TodoListDisplay)
     self.addForm('EDITTODOFM', EditTodo)
 
