@@ -11,9 +11,12 @@ import npyscreen
 import re
 import sqlite3
 
+from os.path import expanduser
 
-TODO_INCOMPLETE = 'todo_incomplete.db'
-#TODO_COMPLETE = 'todo_complete.db'
+
+APP_DIR = expanduser('~') + '/.pydo'
+TODO = APP_DIR + '/todo.db'
+#TODO_COMPLETE = 'complete.db'
 
 
 class EditTodo(npyscreen.ActionForm):
@@ -36,9 +39,9 @@ class EditTodo(npyscreen.ActionForm):
       self.wgPriority.value = todo[2]
     else:
       self.name = 'New Todo'
-      self.todo_id          = ''
-      self.wgDescription.value   = ''
-      self.wgPriority.value = ''
+      self.todo_id = ''
+      self.wgDescription.value = ''
+      self.wgPriority.value = 1
 
   def on_ok(self):
     if self.todo_id:
@@ -60,7 +63,7 @@ class EditTodo(npyscreen.ActionForm):
 
 class TodoDatabase(object):
   def __init__(self):
-    self.dbfilename = TODO_INCOMPLETE
+    self.dbfilename = TODO
     db = sqlite3.connect(self.dbfilename)
     c = db.cursor()
     c.execute(
@@ -125,13 +128,13 @@ class TodoList(npyscreen.MultiLineAction):
   def __init__(self, *args, **keywords):
     super(TodoList, self).__init__(*args, **keywords)
     self.add_handlers({
-      '^A': self.add_todo,
-      '^D': self.delete_todo,
-      '^Q': self.quit,
+      'a': self.add_todo,
+      'd': self.delete_todo,
+      'q': self.quit,
     })
 
   def display_value(self, vl):
-    return '%s  %s' % (vl[2] + 1, vl[1])
+    return 'P%s  %s' % (vl[2] + 1, vl[1])
 
   def actionHighlighted(self, act_on_this, keypress):
     self.parent.parentApp.getForm('EDITTODOFM').value = act_on_this[0]
@@ -160,7 +163,7 @@ class TodoListDisplay(npyscreen.FormMutt):
   def update_list(self):
     self.wStatus1.value = 'Pydo v0.1'
     self.wMain.values = self.parentApp.todoDb.list_all_todos()
-    self.wCommand.value = '^(A)dd  ^(D)elete  ^(Q)uit'
+    self.wCommand.value = '(a)dd  (d)elete  (q)uit'
     self.wMain.display()
 
 
