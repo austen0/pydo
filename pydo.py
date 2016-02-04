@@ -42,11 +42,13 @@ class EditTodo(npyscreen.ActionForm):
       self.parentApp.myDatabase.update_todo(
         self.todo_id,
         description = self.wgDescription.value,
+        priority_id = self.wgPriority.value,
         priority = self.wgPriority.get_selected_objects(),
       )
     else:
       self.parentApp.myDatabase.add_todo(
         description = self.wgDescription.value,
+        priority_id = self.wgPriority.value,
         priority    = self.wgPriority.get_selected_objects(),
       )
     self.parentApp.switchFormPrevious()
@@ -64,18 +66,19 @@ class TodoDatabase(object):
       'CREATE TABLE IF NOT EXISTS todos( \
         todo_internal_id INTEGER PRIMARY KEY, \
         description TEXT, \
+        priority_id INTEGER, \
         priority    TEXT \
       )'
     )
     db.commit()
     c.close()
 
-  def add_todo(self, description = '', priority = ''):
+  def add_todo(self, description = '', priority_id = '', priority = ''):
     db = sqlite3.connect(self.dbfilename)
     c = db.cursor()
     c.execute(
-      'INSERT INTO todos(description, priority) VALUES(?,?)',
-      (description, str(priority))
+      'INSERT INTO todos(description, priority_id, priority) VALUES(?,?,?)',
+      (description, str(priority_id[0]), str(priority))
     )
     db.commit()
     c.close()
@@ -99,13 +102,13 @@ class TodoDatabase(object):
     c.close()
     return todos
 
-  def update_todo(self, todo_id, description = '', priority = ''):
+  def update_todo(self, todo_id, description = '', priority_id = '', priority = ''):
     db = sqlite3.connect(self.dbfilename)
     c = db.cursor()
     c.execute(
-      'UPDATE todos SET description = ?, priority = ? \
+      'UPDATE todos SET description = ?, priority_id = ?, priority = ? \
       WHERE todo_internal_id = ?',
-      (description, str(priority), str(todo_id))
+      (description, str(priority_id[0]), str(priority), str(todo_id))
     )
     db.commit()
     c.close()
@@ -120,7 +123,7 @@ class TodoList(npyscreen.MultiLineAction):
     })
 
   def display_value(self, vl):
-    return '%s, %s' % (re.sub('[^A-Za-z0-9]+', '', vl[2]), vl[1])
+    return '%s, %s' % (re.sub('[^A-Za-z0-9]+', '', vl[3]), vl[1])
 
   def actionHighlighted(self, act_on_this, keypress):
     self.parent.parentApp.getForm('EDITTODOFM').value =act_on_this[0]
@@ -137,7 +140,6 @@ class TodoList(npyscreen.MultiLineAction):
 class TodoListDisplay(npyscreen.FormMutt):
   MAIN_WIDGET_CLASS = TodoList
   def beforeEditing(self):
-    self.name = 'Pydo v0.1'
     self.update_list()
 
   def update_list(self):
