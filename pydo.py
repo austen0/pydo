@@ -13,7 +13,7 @@ import sqlite3
 
 
 TODO_INCOMPLETE = 'todo_incomplete.db'
-TODO_COMPLETE = 'todo_complete.db'
+#TODO_COMPLETE = 'todo_complete.db'
 
 
 class EditTodo(npyscreen.ActionForm):
@@ -104,7 +104,7 @@ class TodoDatabase(object):
   def list_all_todos(self):
     db = sqlite3.connect(self.dbfilename)
     c = db.cursor()
-    c.execute('SELECT * FROM todos')
+    c.execute('SELECT * FROM todos ORDER BY priority_id')
     todos = c.fetchall()
     c.close()
     return todos
