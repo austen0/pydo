@@ -28,18 +28,19 @@ class DatabaseManager(object):
       'CREATE TABLE IF NOT EXISTS records( \
         record_internal_id INTEGER PRIMARY KEY, \
         description TEXT, \
-        priority_id INTEGER \
+        priority_id INTEGER, \
+        notes TEXT \
       )'
     )
     db.commit()
     c.close()
 
-  def add_record(self, description = '', priority_id = ''):
+  def add_record(self, description = '', priority_id = '', notes = ''):
     db = sqlite3.connect(self.dbfilename)
     c = db.cursor()
     c.execute(
-      'INSERT INTO records(description, priority_id) VALUES(?,?)',
-      (description, str(priority_id))
+      'INSERT INTO records(description, priority_id, notes) VALUES(?,?, ?)',
+      (description, str(priority_id), notes)
     )
     db.commit()
     c.close()
@@ -47,7 +48,8 @@ class DatabaseManager(object):
   def delete_record(self, record_id):
     db = sqlite3.connect(self.dbfilename)
     c = db.cursor()
-    c.execute('DELETE FROM records WHERE record_internal_id = ?', (str(record_id)))
+    c.execute(
+      'DELETE FROM records WHERE record_internal_id = ?', (str(record_id)))
     db.commit()
     c.close()
 
@@ -70,13 +72,13 @@ class DatabaseManager(object):
     c.close()
     return records
 
-  def update_record(self, record_id, description = '', priority_id = ''):
+  def update_record(self, record_id, description = '', priority_id = '', notes = ''):
     db = sqlite3.connect(self.dbfilename)
     c = db.cursor()
     c.execute(
-      'UPDATE records SET description = ?, priority_id = ? \
+      'UPDATE records SET description = ?, priority_id = ?, notes = ? \
       WHERE record_internal_id = ?',
-      (description, str(priority_id), str(record_id))
+      (description, str(priority_id), notes, str(record_id))
     )
     db.commit()
     c.close()
@@ -85,13 +87,16 @@ class DatabaseManager(object):
 class EditTodo(npyscreen.ActionForm):
   def create(self):
     self.value = None
-    self.wgDescription = self.add(npyscreen.TitleText, name = 'Description:',)
+    self.wgDescription = self.add(npyscreen.TitleText, name = 'Description:')
     self.wgPriority = self.add(
       npyscreen.TitleSelectOne,
       name = 'Priority:',
       values = ['1 (Hi)', '2 (Med)', '3 (Low)'],
+      max_height = 4,
       scroll_exit = True
     )
+    self.add(npyscreen.TitleFixedText, name = 'Notes:', editable = False)
+    self.wgNotes = self.add(npyscreen.MultiLineEdit)
 
   def beforeEditing(self):
     if self.value:
@@ -100,11 +105,13 @@ class EditTodo(npyscreen.ActionForm):
       self.todo_id = todo[0]
       self.wgDescription.value = todo[1]
       self.wgPriority.value = todo[2]
+      self.wgNotes.value = todo[3]
     else:
       self.name = 'New Todo'
       self.todo_id = ''
       self.wgDescription.value = ''
       self.wgPriority.value = 1
+      self.wgNotes.value = ''
 
   def on_ok(self):
     if self.todo_id:
@@ -112,11 +119,13 @@ class EditTodo(npyscreen.ActionForm):
         self.todo_id,
         description = self.wgDescription.value,
         priority_id = self.wgPriority.value[0],
+        notes = self.wgNotes.value,
       )
     else:
       self.parentApp.todoDb.add_record(
         description = self.wgDescription.value,
         priority_id = self.wgPriority.value[0],
+        notes = self.wgNotes.value
       )
     self.parentApp.switchFormPrevious()
 
