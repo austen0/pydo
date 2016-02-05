@@ -181,6 +181,8 @@ class CompleteList(npyscreen.MultiLineAction):
     self.parent.parentApp.todoDb.add_record(
       description = self.values[self.cursor_line][1],
       priority_id = self.values[self.cursor_line][2],
+      notes = self.values[self.cursor_line][3],
+      last_modified = self.values[self.cursor_line][4],
     )
     self.parent.parentApp.completeDb.delete_record(self.values[self.cursor_line][0])
     self.parent.update_list()
@@ -215,6 +217,8 @@ class TodoList(npyscreen.MultiLineAction):
     self.parent.parentApp.completeDb.add_record(
       description = self.values[self.cursor_line][1],
       priority_id = self.values[self.cursor_line][2],
+      notes = self.values[self.cursor_line][3],
+      last_modified = self.values[self.cursor_line][4],
     )
     self.parent.parentApp.todoDb.delete_record(self.values[self.cursor_line][0])
     self.parent.update_list()
