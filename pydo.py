@@ -39,7 +39,7 @@ class DatabaseManager(object):
     c = db.cursor()
     c.execute(
       'INSERT INTO records(description, priority_id) VALUES(?,?)',
-      (description, str(priority_id[0]))
+      (description, str(priority_id))
     )
     db.commit()
     c.close()
@@ -76,7 +76,7 @@ class DatabaseManager(object):
     c.execute(
       'UPDATE records SET description = ?, priority_id = ? \
       WHERE record_internal_id = ?',
-      (description, str(priority_id[0]), str(record_id))
+      (description, str(priority_id), str(record_id))
     )
     db.commit()
     c.close()
@@ -111,12 +111,12 @@ class EditTodo(npyscreen.ActionForm):
       self.parentApp.todoDb.update_record(
         self.todo_id,
         description = self.wgDescription.value,
-        priority_id = self.wgPriority.value,
+        priority_id = self.wgPriority.value[0],
       )
     else:
       self.parentApp.todoDb.add_record(
         description = self.wgDescription.value,
-        priority_id = self.wgPriority.value,
+        priority_id = self.wgPriority.value[0],
       )
     self.parentApp.switchFormPrevious()
 
@@ -124,11 +124,45 @@ class EditTodo(npyscreen.ActionForm):
     self.parentApp.switchFormPrevious()
 
 
+class CompleteList(npyscreen.MultiLineAction):
+  def __init__(self, *args, **keywords):
+    super(CompleteList, self).__init__(*args, **keywords)
+    self.add_handlers({
+      'r': self.recover_todo,
+      's': self.show_active,
+      'd': self.delete_todo,
+      'q': self.quit,
+    })
+
+  def display_value(self, vl):
+    return 'P%s  %s' % (vl[2] + 1, vl[1])
+
+  def delete_todo(self, *args, **keywords):
+    self.parent.parentApp.completeDb.delete_record(self.values[self.cursor_line][0])
+    self.parent.update_list()
+
+  def quit(self, *args, **keywords):
+    self.parent.parentApp.switchForm(None)
+
+  def recover_todo(self, *args, **keywords):
+    self.parent.parentApp.todoDb.add_record(
+      description = self.values[self.cursor_line][1],
+      priority_id = self.values[self.cursor_line][2],
+    )
+    self.parent.parentApp.completeDb.delete_record(self.values[self.cursor_line][0])
+    self.parent.update_list()
+
+  def show_active(self, *args, **keywords):
+    self.parent.parentApp.switchForm('MAIN')
+
+
 class TodoList(npyscreen.MultiLineAction):
   def __init__(self, *args, **keywords):
     super(TodoList, self).__init__(*args, **keywords)
     self.add_handlers({
       'a': self.add_todo,
+      'c': self.complete_todo,
+      's': self.show_complete,
       'd': self.delete_todo,
       'q': self.quit,
     })
@@ -144,12 +178,38 @@ class TodoList(npyscreen.MultiLineAction):
     self.parent.parentApp.getForm('EDITTODOFM').value = None
     self.parent.parentApp.switchForm('EDITTODOFM')
 
+  def complete_todo(self, *args, **keywords):
+    self.parent.parentApp.completeDb.add_record(
+      description = self.values[self.cursor_line][1],
+      priority_id = self.values[self.cursor_line][2],
+    )
+    self.parent.parentApp.todoDb.delete_record(self.values[self.cursor_line][0])
+    self.parent.update_list()
+
   def delete_todo(self, *args, **keywords):
     self.parent.parentApp.todoDb.delete_record(self.values[self.cursor_line][0])
     self.parent.update_list()
 
   def quit(self, *args, **keywords):
     self.parent.parentApp.switchForm(None)
+
+  def show_complete(self, *args, **keywords):
+    self.parent.parentApp.switchForm('COMPLETEFM')
+
+
+class CompleteDisplay(npyscreen.FormMutt):
+  MAIN_WIDGET_CLASS = CompleteList
+  STATUS_WIDGET_CLASS = npyscreen.wgtextbox.Textfield
+  COMMAND_WIDGET_CLASS = npyscreen.wgtextbox.Textfield
+
+  def beforeEditing(self):
+    self.update_list()
+
+  def update_list(self):
+    self.wStatus1.value = 'Pydo v0.1 - Completed Tasks'
+    self.wMain.values = self.parentApp.completeDb.list_all_records()
+    self.wCommand.value = '(r)ecover  (s)how_active  (d)elete  (q)uit'
+    self.wMain.display()
 
 
 class TodoListDisplay(npyscreen.FormMutt):
@@ -161,9 +221,9 @@ class TodoListDisplay(npyscreen.FormMutt):
     self.update_list()
 
   def update_list(self):
-    self.wStatus1.value = 'Pydo v0.1'
+    self.wStatus1.value = 'Pydo v0.1 - Active Tasks'
     self.wMain.values = self.parentApp.todoDb.list_all_records()
-    self.wCommand.value = '(a)dd  (d)elete  (q)uit'
+    self.wCommand.value = '(a)dd  (c)omplete  (s)how_complete  (d)elete  (q)uit'
     self.wMain.display()
 
 
@@ -172,6 +232,7 @@ class PydoApp(npyscreen.NPSAppManaged):
     self.todoDb = DatabaseManager(TODO)
     self.completeDb = DatabaseManager(COMPLETE)
     self.addForm('MAIN', TodoListDisplay)
+    self.addForm('COMPLETEFM', CompleteDisplay)
     self.addForm('EDITTODOFM', EditTodo)
 
 
