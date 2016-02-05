@@ -168,10 +168,15 @@ class CompleteList(npyscreen.MultiLineAction):
     })
 
   def display_value(self, vl):
-    return 'P%s  %s' % (vl[2] + 1, vl[1])
+    priority = vl[2] + 1
+    last_mod = humanize.naturaltime(int(time()) - vl[4])
+    last_mod_buf = ' ' * (15 - len(last_mod))
+    last_mod = last_mod + last_mod_buf
+    return ' P%d | %s | %s' % (priority, last_mod, vl[1])
 
   def delete_todo(self, *args, **keywords):
-    self.parent.parentApp.completeDb.delete_record(self.values[self.cursor_line][0])
+    self.parent.parentApp.completeDb.delete_record(
+      self.values[self.cursor_line][0])
     self.parent.update_list()
 
   def quit(self, *args, **keywords):
@@ -184,7 +189,8 @@ class CompleteList(npyscreen.MultiLineAction):
       notes = self.values[self.cursor_line][3],
       last_modified = self.values[self.cursor_line][4],
     )
-    self.parent.parentApp.completeDb.delete_record(self.values[self.cursor_line][0])
+    self.parent.parentApp.completeDb.delete_record(
+      self.values[self.cursor_line][0])
     self.parent.update_list()
 
   def show_active(self, *args, **keywords):
@@ -203,7 +209,11 @@ class TodoList(npyscreen.MultiLineAction):
     })
 
   def display_value(self, vl):
-    return 'P%s  %s' % (vl[2] + 1, vl[1])
+    priority = vl[2] + 1
+    last_mod = humanize.naturaltime(int(time()) - vl[4])
+    last_mod_buf = ' ' * (15 - len(last_mod))
+    last_mod = last_mod + last_mod_buf
+    return ' P%d | %s | %s' % (priority, last_mod, vl[1])
 
   def actionHighlighted(self, act_on_this, keypress):
     self.parent.parentApp.getForm('EDITTODOFM').value = act_on_this[0]
@@ -243,8 +253,9 @@ class CompleteDisplay(npyscreen.FormMutt):
     self.update_list()
 
   def update_list(self):
-    self.wStatus1.value = 'Pydo v0.1 - Completed Tasks'
+    self.wStatus1.value = ' Pr | Last Modified   | Task '
     self.wMain.values = self.parentApp.completeDb.list_all_records()
+    self.wStatus2.value = ' Pydo v0.1 '
     self.wCommand.value = '(r)ecover  (s)how_active  (d)elete  (q)uit'
     self.wMain.display()
 
@@ -258,8 +269,9 @@ class TodoListDisplay(npyscreen.FormMutt):
     self.update_list()
 
   def update_list(self):
-    self.wStatus1.value = 'Pydo v0.1 - Active Tasks'
+    self.wStatus1.value = ' Pr | Last Modified   | Task '
     self.wMain.values = self.parentApp.todoDb.list_all_records()
+    self.wStatus2.value = ' Pydo v0.1 '
     self.wCommand.value = '(a)dd  (c)omplete  (s)how_complete  (d)elete  (q)uit'
     self.wMain.display()
 
